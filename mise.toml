@@ -1,0 +1,7 @@
+# super-board — autonomous rig task wiring (Phase-B).
+# bin/run = offline safety gate; bin/check = deterministic syntax+compile gate.
+
+[tasks]
+run = "./bin/run"
+check = "./bin/check"
+safety = "bash tests/run-safety.sh"

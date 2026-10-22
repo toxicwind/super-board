@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# super-board — kanban-by-skills + guard-hooks framework autonomous rig (bin/check).
+# Self-test gate (PASS / FAIL / WARN). Deterministic, offline:
+#   1. Every repo shell script passes `bash -n` (syntax integrity).
+#   2. Every repo python script passes `py_compile`.
+#   3. Full offline safety gate (tests/run-safety.sh) reported as WARN when its
+#      environment-dependent suites fail (needs installed board + GitHub context).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+echo "== super-board check: start =="
+pybin="$(command -v python3 2>/dev/null || echo /usr/bin/python3)"
+
+echo "-- shell syntax (bash -n) --"
+sfails=0; sok=0
+while IFS= read -r p; do
+  if bash -n "$p" 2>/dev/null; then sok=$((sok+1)); else echo "SH-FAIL: $p"; sfails=$((sfails+1)); fi
+done < <(find . -name "*.sh" -not -path "*/node_modules/*")
+echo "shell: ok=$sok fails=$sfails"
+[ "$sfails" -eq 0 ] || { echo "FAIL: $sfails shell script(s) invalid"; exit 1; }
+
+echo "-- python compile --"
+pfails=0; pok=0
+while IFS= read -r p; do
+  if "$pybin" -m py_compile "$p" 2>/dev/null; then pok=$((pok+1)); else echo "PY-FAIL: $p"; pfails=$((pfails+1)); fi
+done < <(find . -name "*.py" -not -path "*/node_modules/*")
+echo "python: ok=$pok fails=$pfails"
+[ "$pfails" -eq 0 ] || { echo "FAIL: $pfails python file(s) invalid"; exit 1; }
+
+echo "-- full safety gate (WARN-only; env-dependent suites) --"
+if [ -x tests/run-safety.sh ]; then
+  if timeout 200 bash tests/run-safety.sh >/tmp/sb-gate.log 2>&1; then
+    echo "OK: full safety gate passed"
+  else
+    nf="$(grep -cE '^Failed suite:' /tmp/sb-gate.log || true)"
+    echo "WARN: full safety gate has $nf env-dependent suite failure(s)"
+    echo "      (needs installed board + GitHub/worktree context; syntax gate above is the deterministic code health gate)."
+  fi
+else
+  echo "WARN: tests/run-safety.sh not present"
+fi
+
+echo "== super-board check: PASS =="

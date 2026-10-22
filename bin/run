@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# super-board — kanban-by-skills + guard-hooks framework autonomous rig (bin/run).
+# Primary operation: install/use the board (get.sh + install.sh wire skills,
+# commands, guard hooks). bin/run runs the offline safety gate and reports the
+# runnable entrypoints. For a full release check run bin/check.
+# Usage: bin/run
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+echo "== super-board run: offline safety check =="
+if [ -x tests/run-safety.sh ]; then
+  if timeout 200 bash tests/run-safety.sh 2>&1 | tail -20; then
+    echo "OK: safety gate passed"
+  else
+    echo "WARN: safety gate has env-dependent suite failures (see above)."
+    echo "      Deterministic code-health gate: bin/check"
+  fi
+else
+  echo "WARN: tests/run-safety.sh not present"
+fi
+echo "Runnable: ./get.sh       (bootstrap)"
+echo "          ./install.sh   (wire skills/commands/hooks)"
+echo "OK: super-board surface documented"
